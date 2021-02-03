@@ -1,0 +1,9 @@
+.dockerignore
+Dockerfile
+docker-compose.yml
+.idea/
+*.iml
+.git/
+Makefile
+token.txt
+.gitignore

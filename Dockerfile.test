@@ -1,0 +1,6 @@
+FROM golang:1.15.7 AS yandexdating-test
+WORKDIR /dockerdev
+COPY go.mod go.sum ./
+RUN go mod download
+ADD . /dockerdev
+ENTRYPOINT ["go", "test", "-ldflags", "-X yandexschooldating/config.MongoUri=mongodb://mongo-test:27017", "-v", "./..."]

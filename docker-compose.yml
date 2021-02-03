@@ -1,0 +1,59 @@
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+      target: yandexdating
+      context: .
+    depends_on:
+      - mongo
+    profiles:
+      - release
+    secrets:
+      - bot_token
+  app-debug:
+    build:
+      dockerfile: Dockerfile
+      target: yandexdating-debug
+      context: .
+    cap_add:
+      - SYS_PTRACE
+    depends_on:
+      - mongo
+    ports:
+      - 40000:40000
+    profiles:
+      - debug
+    secrets:
+      - bot_token
+    security_opt:
+      - "seccomp:unconfined"
+
+  app-test:
+    build:
+      dockerfile: Dockerfile
+      target: yandexdating-test
+      context: .
+    depends_on:
+        - mongo-test
+    profiles:
+        - test
+
+  mongo:
+    image: mongo
+    volumes:
+      - yandexdating:/data/db
+    profiles:
+      - debug
+      - release
+
+  mongo-test:
+    image: mongo
+    profiles:
+      - test
+
+volumes:
+  yandexdating:
+
+secrets:
+  bot_token:
+    file: $TOKEN

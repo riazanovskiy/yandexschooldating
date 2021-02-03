@@ -1,0 +1,10 @@
+services:
+  app-test:
+    build:
+      dockerfile: Dockerfile.test
+      target: yandexdating-test
+      context: .
+    depends_on:
+        - mongo-test
+  mongo-test:
+    image: mongo
