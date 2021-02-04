@@ -14,6 +14,12 @@ const (
 	SchedulingDay = time.Monday
 	NotifyBefore  = time.Hour
 
+	SendMessageRetries = 5
+	// SendMessageRetryTimeoutMs
+	// Yes, this is a timeout in a single-threaded code so
+	// failure to send a message will block the whole bot for SendMessageRetryTimeoutMs milliseconds
+	SendMessageRetryTimeoutMs = 200
+
 	AdminUser = "riazanovskiy"
 )
 

@@ -134,7 +134,7 @@ func main() {
 				if i == 0 && reply.ChatID == update.Message.Chat.ID {
 					message.ReplyToMessageID = update.Message.MessageID
 				}
-				_, err = bot.Send(message)
+				err = sendWithRetry(bot, message)
 				if err != nil {
 					log.Panicf("can't send message %+v", err)
 				}
@@ -158,6 +158,19 @@ func main() {
 			log.Printf("sending reminder %+v", message)
 		}
 	}
+}
+
+func sendWithRetry(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) error {
+	var err error
+	for i := 0; i < config.SendMessageRetries; i++ {
+		_, err := bot.Send(message)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(config.SendMessageRetryTimeoutMs * time.Millisecond)
+	}
+
+	return err
 }
 
 func ChooseNextMatchTimerDate(clock clock.Clock) time.Time {
