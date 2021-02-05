@@ -77,7 +77,7 @@ func (b *CoffeeBot) findUserByID(ctx context.Context, ID int) (*user.User, error
 		return nil, err
 	}
 	if user == nil {
-		return nil, errorx.IllegalState.New("can't find user %d from match", ID)
+		return nil, errorx.IllegalState.New("can't find user %d", ID)
 	}
 	return user, nil
 }
