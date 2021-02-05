@@ -90,9 +90,21 @@ func formatMatchMessage(thisUser *user.User, otherUser *user.User, meetingTime t
 	return message
 }
 
-func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string, chatID int64, text string) ([]BotReply, error) {
-	if b.state[ID] == nil {
-		b.state[ID] = &userState{lastMarkup: b.remindStopMeetingsKeyboard}
+func (b *CoffeeBot) getMatchOrNoMeetingsReply(ctx context.Context, userID int, chatID int64) (*match.Match, []BotReply, error) {
+	match, err := b.matchDAO.FindCurrentMatchForUserID(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if match == nil {
+		b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
+		return nil, []BotReply{{chatID, messagestrings.NoMeetingsThisWeek, b.getLastMarkup(userID)}}, nil
+	}
+	return match, nil, nil
+}
+
+func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username string, chatID int64, text string) ([]BotReply, error) {
+	if b.state[userID] == nil {
+		b.state[userID] = &userState{lastMarkup: b.remindStopMeetingsKeyboard}
 	}
 
 	if len(username) == 0 {
@@ -101,23 +113,19 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string,
 
 	switch text {
 	case "/start":
-		b.state[ID].waitingForCity = true
+		b.state[userID].waitingForCity = true
 		return []BotReply{{chatID, messagestrings.GreetingAskCity, b.citiesKeyboard}}, nil
 	case messagestrings.RemindMe:
-		match, err := b.matchDAO.FindCurrentMatchForUserID(ctx, ID)
-		if err != nil {
-			return nil, err
-		}
-		if match == nil {
-			b.setLastMarkup(ID, b.remindStopMeetingsKeyboard)
-			return []BotReply{{chatID, messagestrings.NoMeetingsThisWeek, b.getLastMarkup(ID)}}, nil
+		match, replies, err := b.getMatchOrNoMeetingsReply(ctx, userID, chatID)
+		if err != nil || replies != nil {
+			return replies, err
 		}
 		otherUser, err := b.findUserByID(ctx, match.SecondID)
 		if err != nil {
 			return nil, err
 		}
 
-		thisUser, err := b.findUserByID(ctx, ID)
+		thisUser, err := b.findUserByID(ctx, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -128,13 +136,13 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string,
 			if !ok {
 				reply += ". Поскольку мы не знаем часового пояса для твоего города, время должно быть в формате UTC"
 			}
-			b.state[ID].waitingForDate = true
-			b.setLastMarkup(ID, b.removeMarkup)
+			b.state[userID].waitingForDate = true
+			b.setLastMarkup(userID, b.removeMarkup)
 		} else {
 			reply = formatMatchMessage(thisUser, otherUser, *match.MeetingTime)
-			b.setLastMarkup(ID, b.remindChangeTimeStopMeetingsKeyboard)
+			b.setLastMarkup(userID, b.remindChangeTimeStopMeetingsKeyboard)
 		}
-		return []BotReply{{chatID, reply, b.getLastMarkup(ID)}}, nil
+		return []BotReply{{chatID, reply, b.getLastMarkup(userID)}}, nil
 	case "MakeMatches":
 		if username == config.AdminUser {
 			err := b.MakeMatches(ctx, b.clock.Now().Add(30*time.Second))
@@ -144,28 +152,24 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string,
 			} else {
 				reply = "MakeMatches error: " + err.Error()
 			}
-			return []BotReply{{chatID, reply, b.getLastMarkup(ID)}}, nil
+			return []BotReply{{chatID, reply, b.getLastMarkup(userID)}}, nil
 		}
 	default:
 		switch {
-		case b.state[ID].waitingForCity:
-			b.state[ID].waitingForCity = false
-			err := b.userDAO.UpsertUser(ctx, ID, username, text, chatID, true)
+		case b.state[userID].waitingForCity:
+			b.state[userID].waitingForCity = false
+			err := b.userDAO.UpsertUser(ctx, userID, username, text, chatID, true)
 			if err != nil {
 				return nil, err
 			}
-			return []BotReply{{chatID, messagestrings.Welcome, b.getLastMarkup(ID)}}, nil
-		case b.state[ID].waitingForDate:
-			b.state[ID].waitingForDate = false
-			match, err := b.matchDAO.FindCurrentMatchForUserID(ctx, ID)
-			if err != nil {
-				return nil, err
+			return []BotReply{{chatID, messagestrings.Welcome, b.getLastMarkup(userID)}}, nil
+		case b.state[userID].waitingForDate:
+			b.state[userID].waitingForDate = false
+			match, reply, err := b.getMatchOrNoMeetingsReply(ctx, userID, chatID)
+			if err != nil || reply != nil {
+				return reply, err
 			}
-			if match == nil {
-				b.setLastMarkup(ID, b.remindStopMeetingsKeyboard)
-				return []BotReply{{chatID, messagestrings.NoMeetingsThisWeek, b.getLastMarkup(ID)}}, nil
-			}
-			thisUser, err := b.findUserByID(ctx, ID)
+			thisUser, err := b.findUserByID(ctx, userID)
 			if err != nil {
 				return nil, err
 			}
@@ -181,16 +185,16 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string,
 					0,
 					parsedTime.Location(),
 				)
-				err = b.matchDAO.UpdateMatchTime(ctx, ID, meetingTime)
+				err = b.matchDAO.UpdateMatchTime(ctx, userID, meetingTime)
 				if err != nil {
 					return nil, err
 				}
 
-				b.setLastMarkup(ID, b.remindChangeTimeStopMeetingsKeyboard)
+				b.setLastMarkup(userID, b.remindChangeTimeStopMeetingsKeyboard)
 				b.setLastMarkup(match.SecondID, b.remindChangeTimeStopMeetingsKeyboard)
 
 				if int(meetingTime.Sub(b.clock.Now()).Seconds()) <= 1 {
-					return []BotReply{{thisUser.ChatID, messagestrings.TimeInThePast, b.getLastMarkup(ID)}}, nil
+					return []BotReply{{thisUser.ChatID, messagestrings.TimeInThePast, b.getLastMarkup(userID)}}, nil
 				}
 
 				otherUser, err := b.findUserByID(ctx, match.SecondID)
@@ -227,12 +231,12 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, ID int, username string,
 				}, nil
 			} else {
 				log.Printf("error parsing date %s", text)
-				b.setLastMarkup(ID, b.remindStopMeetingsKeyboard)
-				return []BotReply{{chatID, messagestrings.CouldNotParseTime, b.getLastMarkup(ID)}}, nil
+				b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
+				return []BotReply{{chatID, messagestrings.CouldNotParseTime, b.getLastMarkup(userID)}}, nil
 			}
 		}
 	}
-	return []BotReply{{chatID, messagestrings.DefaultReply, b.getLastMarkup(ID)}}, nil
+	return []BotReply{{chatID, messagestrings.DefaultReply, b.getLastMarkup(userID)}}, nil
 }
 
 func (b *CoffeeBot) makeMatchesForList(ctx context.Context, reminderTime time.Time, users []user.User) error {
