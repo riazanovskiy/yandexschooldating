@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -519,6 +520,11 @@ func TestCoffeeBot(t *testing.T) {
 
 		replies, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "05.07 9:15")
 		require.NotNil(t, err)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2128506, config.AdminUser, 2128506, "MakeMatches")
+		require.Nil(t, err)
+		require.Len(t, replies, 1)
+		require.True(t, strings.HasPrefix(replies[0].Text, "MakeMatches error: "))
 	})
 
 	t.Run("MakeMatches", func(t *testing.T) {
