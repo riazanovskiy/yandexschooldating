@@ -151,7 +151,7 @@ func main() {
 			}()
 		case reminder := <-remindersChan:
 			message := tgbotapi.NewMessage(reminder.ChatID, reminder.Text)
-			_, err = bot.Send(message)
+			err = sendWithRetry(bot, message)
 			if err != nil {
 				log.Panicf("can't send message %+v", err)
 			}
