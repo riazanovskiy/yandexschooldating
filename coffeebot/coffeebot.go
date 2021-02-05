@@ -285,6 +285,9 @@ func (b *CoffeeBot) MakeMatches(ctx context.Context, reminderTime time.Time) err
 			leftovers = append(leftovers, users[len(users)-1])
 		}
 	}
+
+	rand.Shuffle(len(leftovers), func(i, j int) { leftovers[i], leftovers[j] = leftovers[j], leftovers[i] })
+
 	err = b.makeMatchesForList(ctx, reminderTime, leftovers)
 	if err != nil {
 		return err
