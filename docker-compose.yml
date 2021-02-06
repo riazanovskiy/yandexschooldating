@@ -10,6 +10,8 @@ services:
       - release
     secrets:
       - bot_token
+    logging:
+      driver: journald
   app-debug:
     build:
       dockerfile: Dockerfile
