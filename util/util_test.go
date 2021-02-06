@@ -18,10 +18,10 @@ func TestGetMongoClient(t *testing.T) {
 	require.Nil(t, err)
 
 	_, err = util.GetMongoClient(ctx, "https://mongo:27017", 2*time.Second)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, err = util.GetMongoClient(ctx, "mongodb://localhost:666", 2*time.Second)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestDropTestDatabaseOrPanic(t *testing.T) {

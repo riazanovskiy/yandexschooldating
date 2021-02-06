@@ -152,7 +152,7 @@ func TestCoffeeBot(t *testing.T) {
 		requireSingleReplyText(t, replies, 66, messagestrings.SorryNoUsername)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Привет!")
 		require.Nil(t, err)
@@ -484,9 +484,9 @@ func TestCoffeeBot(t *testing.T) {
 		}
 
 		_, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
-		require.NotNil(t, err)
+		require.Error(t, err)
 		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(3*time.Second))
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		test = newTestContext(ctx)
 		test.init(ctx, &fakeClock)
@@ -498,10 +498,10 @@ func TestCoffeeBot(t *testing.T) {
 			panic(err)
 		}
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Москва")
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.Activate)
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		test = newTestContext(ctx)
 		test.database = "test_coffeebot"
@@ -535,7 +535,7 @@ func TestCoffeeBot(t *testing.T) {
 		}
 
 		replies, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "05.07 9:15")
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 2128506, config.AdminUser, 2128506, "MakeMatches")
 		require.Nil(t, err)

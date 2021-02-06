@@ -121,13 +121,13 @@ func TestDao(t *testing.T) {
 	require.Nil(t, err)
 
 	err = dao.AddMatch(ctx, 85, 7)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = dao.AddMatch(ctx, 6, 85)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = dao.AddMatch(ctx, 7, 85)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	result, err = dao.FindCurrentMatchForUserID(ctx, 6)
 	require.Nil(t, err)
@@ -155,7 +155,7 @@ func TestDao(t *testing.T) {
 	require.Equal(t, meetingTime.Unix(), result.MeetingTime.Unix())
 
 	err = dao.UpdateMatchTime(ctx, 1, meetingTime)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	everyone, err = dao.GetAllMatchedUsers(ctx)
 	require.Nil(t, err)
@@ -169,10 +169,10 @@ func TestDao(t *testing.T) {
 	require.Nil(t, everyone)
 
 	err = dao.BreakMatchForUser(ctx, 2)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = dao.BreakMatchForUser(ctx, 12)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	result, err = dao.FindCurrentMatchForUserID(ctx, 6)
 	require.Nil(t, err)
@@ -218,22 +218,22 @@ func TestDao(t *testing.T) {
 	}
 
 	err = dao.AddMatch(ctx, 1, 2)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	_, err = dao.FindCurrentMatchForUserID(ctx, 6)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	meetingTime = meetingTime.AddDate(0, 0, 1)
 	err = dao.UpdateMatchTime(ctx, 6, meetingTime)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = dao.BreakMatchForUser(ctx, 85)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	everyone, err = dao.GetAllMatchedUsers(ctx)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	dao = match.NewDAO(client, testDatabase, clock)
 	err = dao.InitializeMatchingCycle(ctx)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }

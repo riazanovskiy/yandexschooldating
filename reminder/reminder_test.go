@@ -45,7 +45,7 @@ func TestDao_AddReminder(t *testing.T) {
 	require.True(t, util.IsChannelEmpty(queue))
 
 	err = dao.AddReminder(ctx, time.Date(2020, 7, 5, 4, 20, 0, 0, time.UTC), 1, "will never see")
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = client.Disconnect(ctx)
 	if err != nil {
@@ -53,7 +53,7 @@ func TestDao_AddReminder(t *testing.T) {
 	}
 
 	err = dao.AddReminder(ctx, start.Add(time.Hour), 1, "will never see")
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestDao_PopulateReminderQueue(t *testing.T) {

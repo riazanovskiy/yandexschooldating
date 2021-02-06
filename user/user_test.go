@@ -54,7 +54,7 @@ func TestDao(t *testing.T) {
 	require.Len(t, active, 1)
 
 	err = dao.UpdateActiveStatus(ctx, 88, true)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = client.Disconnect(ctx)
 	if err != nil {
@@ -62,10 +62,10 @@ func TestDao(t *testing.T) {
 	}
 
 	_, err = dao.FindUserByID(ctx, 2)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	_, err = dao.FindActiveUsers(ctx)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	err = dao.UpdateActiveStatus(ctx, 1, false)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
