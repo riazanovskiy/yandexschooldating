@@ -1,4 +1,4 @@
-FROM golang:1.15.7 AS build-env-base
+FROM golang:1.15 AS build-env-base
 RUN go get github.com/go-delve/delve/cmd/dlv
 WORKDIR /dockerdev
 COPY go.mod go.sum ./
