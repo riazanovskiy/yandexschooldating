@@ -44,6 +44,8 @@ type DAO interface {
 	UpdateMatchTime(ctx context.Context, ID int, time time.Time) error
 	InitializeMatchingCycle(ctx context.Context) error
 	IncrementMatchingCycle()
+	BreakMatchForUser(ctx context.Context, userID int) error
+	GetAllMatchedUsers(ctx context.Context) ([]int, error)
 }
 
 type dao struct {
@@ -149,4 +151,34 @@ func (m *dao) AddMatch(ctx context.Context, firstID, secondID int) error {
 	}
 	_, err = m.matches.InsertOne(ctx, match)
 	return err
+}
+
+func (m *dao) BreakMatchForUser(ctx context.Context, userID int) error {
+	result, err := m.matches.UpdateOne(ctx, m.filterBson(userID), bson.M{"$set": bson.M{MatchBSON.Refused: true}})
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return errorx.IllegalArgument.New("error breaking match: match for user %d not found", userID)
+	}
+	return nil
+}
+
+func (m *dao) GetAllMatchedUsers(ctx context.Context) ([]int, error) {
+	cursor, err := m.matches.Find(ctx, bson.M{MatchBSON.MatchingCycle: m.matchingCycle, MatchBSON.Refused: false})
+	if err != nil {
+		return nil, errorx.Decorate(err, "error finding all matched users")
+	}
+	var result []int
+	for cursor.Next(ctx) {
+		var match Match
+		err = cursor.Decode(&match)
+		if err != nil {
+			return nil, errorx.Decorate(err, "can't decode match")
+		}
+		result = append(result, match.FirstID)
+		result = append(result, match.SecondID)
+	}
+	return result, nil
 }

@@ -27,23 +27,69 @@ func TestDao(t *testing.T) {
 	clock := &clock.Fake{Current: start}
 
 	dao := match.NewDAO(client, testDatabase, clock)
+	err = dao.InitializeMatchingCycle(ctx)
+	require.Nil(t, err)
+
+	everyone, err := dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.Nil(t, everyone)
 
 	err = dao.AddMatch(ctx, 2, 3)
 	require.Nil(t, err)
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{2, 3})
+
 	clock.Current = clock.Current.AddDate(0, 0, 7)
 	dao.IncrementMatchingCycle()
 	err = dao.AddMatch(ctx, 2, 4)
 	require.Nil(t, err)
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{2, 4})
+
 	clock.Current = clock.Current.AddDate(0, 0, 6).Add((60*20 + 31) * time.Minute)
 	dao.IncrementMatchingCycle()
 	err = dao.AddMatch(ctx, 2, 5)
 	require.Nil(t, err)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{2, 5})
+
 	clock.Current = clock.Current.AddDate(0, 0, 7).Add(31 * time.Minute)
 	dao.IncrementMatchingCycle()
 	err = dao.AddMatch(ctx, 2, 12)
 	require.Nil(t, err)
 	clock.Current = clock.Current.Add(5 * time.Minute)
 	result, err := dao.FindCurrentMatchForUserID(ctx, 2)
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 2, result.FirstID)
+	require.Equal(t, 12, result.SecondID)
+	result, err = dao.FindCurrentMatchForUserID(ctx, 12)
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 12, result.FirstID)
+	require.Equal(t, 2, result.SecondID)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{12, 2})
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 3)
+	require.Nil(t, err)
+	require.Nil(t, result)
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 5)
+	require.Nil(t, err)
+	require.Nil(t, result)
+
+	dao = match.NewDAO(client, testDatabase, clock)
+	err = dao.InitializeMatchingCycle(ctx)
+	require.Nil(t, err)
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 2)
 	require.Nil(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 2, result.FirstID)
@@ -111,6 +157,61 @@ func TestDao(t *testing.T) {
 	err = dao.UpdateMatchTime(ctx, 1, meetingTime)
 	require.NotNil(t, err)
 
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{85, 6})
+
+	err = dao.BreakMatchForUser(ctx, 85)
+	require.Nil(t, err)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.Nil(t, everyone)
+
+	err = dao.BreakMatchForUser(ctx, 2)
+	require.NotNil(t, err)
+
+	err = dao.BreakMatchForUser(ctx, 12)
+	require.NotNil(t, err)
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 6)
+	require.Nil(t, err)
+	require.Nil(t, result)
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 85)
+	require.Nil(t, err)
+	require.Nil(t, result)
+
+	err = dao.AddMatch(ctx, 6, 100)
+	require.Nil(t, err)
+
+	err = dao.AddMatch(ctx, 85, 101)
+	require.Nil(t, err)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{6, 85, 100, 101})
+
+	err = dao.BreakMatchForUser(ctx, 101)
+	require.Nil(t, err)
+
+	err = dao.BreakMatchForUser(ctx, 100)
+	require.Nil(t, err)
+
+	err = dao.AddMatch(ctx, 6, 85)
+	require.Nil(t, err)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.Nil(t, err)
+	require.ElementsMatch(t, everyone, []int{85, 6})
+
+	result, err = dao.FindCurrentMatchForUserID(ctx, 6)
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 6, result.FirstID)
+	require.Equal(t, 85, result.SecondID)
+	require.Nil(t, result.MeetingTime)
+
 	err = client.Disconnect(ctx)
 	if err != nil {
 		panic(err)
@@ -124,5 +225,15 @@ func TestDao(t *testing.T) {
 
 	meetingTime = meetingTime.AddDate(0, 0, 1)
 	err = dao.UpdateMatchTime(ctx, 6, meetingTime)
+	require.NotNil(t, err)
+
+	err = dao.BreakMatchForUser(ctx, 85)
+	require.NotNil(t, err)
+
+	everyone, err = dao.GetAllMatchedUsers(ctx)
+	require.NotNil(t, err)
+
+	dao = match.NewDAO(client, testDatabase, clock)
+	err = dao.InitializeMatchingCycle(ctx)
 	require.NotNil(t, err)
 }

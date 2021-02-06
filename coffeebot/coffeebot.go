@@ -82,7 +82,7 @@ func (b *CoffeeBot) findUserByID(ctx context.Context, ID int) (*user.User, error
 	return user, nil
 }
 
-func formatMatchMessage(thisUser *user.User, otherUser *user.User, meetingTime time.Time) string {
+func formatMatchMessageWithTime(thisUser *user.User, otherUser *user.User, meetingTime time.Time) string {
 	message := "Встреча с @" + otherUser.Username + " будет " + meetingTime.In(util.GetLocationForCityOrUTC(thisUser.City)).Format("02 January в 15:04 MST")
 	if thisUser.City != otherUser.City {
 		message = "Встречи в твоём городе не нашлось. " + message
@@ -102,6 +102,56 @@ func (b *CoffeeBot) getMatchOrNoMeetingsReply(ctx context.Context, userID int, c
 	return match, nil, nil
 }
 
+func (b *CoffeeBot) replyInactiveUser(ctx context.Context, userID int, chatID int64) ([]BotReply, error) {
+	user, err := b.findUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !user.Active {
+		b.setLastMarkup(userID, b.activateKeyboard)
+		return []BotReply{{chatID, messagestrings.InactiveUser, b.getLastMarkup(userID)}}, nil
+	}
+	return nil, nil
+}
+
+func (b *CoffeeBot) findActiveUserIDWithoutMatch(ctx context.Context) (*int, error) {
+	matched, err := b.matchDAO.GetAllMatchedUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	matchedSet := make(map[int]bool)
+	for _, matchedUser := range matched {
+		matchedSet[matchedUser] = true
+	}
+	activeUsers, err := b.userDAO.FindActiveUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, activeUser := range activeUsers {
+		if !matchedSet[activeUser.ID] {
+			return &activeUser.ID, nil
+		}
+	}
+	return nil, nil
+}
+
+func (b *CoffeeBot) addMatchAndGetMatchReplies(ctx context.Context, firstUser *user.User, secondUserID int) ([]BotReply, error) {
+	secondUser, err := b.findUserByID(ctx, secondUserID)
+	if err != nil {
+		return nil, err
+	}
+	err = b.matchDAO.AddMatch(ctx, firstUser.ID, secondUser.ID)
+	if err != nil {
+		return nil, err
+	}
+	b.setLastMarkup(firstUser.ID, b.remindChangeTimeStopMeetingsKeyboard)
+	b.setLastMarkup(secondUser.ID, b.remindChangeTimeStopMeetingsKeyboard)
+	return []BotReply{
+		{firstUser.ChatID, formatMeetingMessage(secondUser.Username), b.getLastMarkup(firstUser.ID)},
+		{secondUser.ChatID, formatMeetingMessage(firstUser.Username), b.getLastMarkup(secondUser.ID)},
+	}, nil
+}
+
 func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username string, chatID int64, text string) ([]BotReply, error) {
 	if b.state[userID] == nil {
 		b.state[userID] = &userState{lastMarkup: b.remindStopMeetingsKeyboard}
@@ -116,6 +166,10 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 		b.state[userID].waitingForCity = true
 		return []BotReply{{chatID, messagestrings.GreetingAskCity, b.citiesKeyboard}}, nil
 	case messagestrings.RemindMe:
+		replies, err := b.replyInactiveUser(ctx, userID, chatID)
+		if err != nil || replies != nil {
+			return replies, err
+		}
 		match, replies, err := b.getMatchOrNoMeetingsReply(ctx, userID, chatID)
 		if err != nil || replies != nil {
 			return replies, err
@@ -139,13 +193,13 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 			b.state[userID].waitingForDate = true
 			b.setLastMarkup(userID, b.removeMarkup)
 		} else {
-			reply = formatMatchMessage(thisUser, otherUser, *match.MeetingTime)
+			reply = formatMatchMessageWithTime(thisUser, otherUser, *match.MeetingTime)
 			b.setLastMarkup(userID, b.remindChangeTimeStopMeetingsKeyboard)
 		}
 		return []BotReply{{chatID, reply, b.getLastMarkup(userID)}}, nil
 	case "MakeMatches":
 		if username == config.AdminUser {
-			err := b.MakeMatches(ctx, b.clock.Now().Add(30*time.Second))
+			err := b.MakeMatches(ctx, b.clock.Now().Add(10*time.Second))
 			var reply string
 			if err == nil {
 				reply = "MakeMatches succeeded"
@@ -154,17 +208,97 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 			}
 			return []BotReply{{chatID, reply, b.getLastMarkup(userID)}}, nil
 		}
+	case messagestrings.StopMeetings:
+		reply, err := b.replyInactiveUser(ctx, userID, chatID)
+		if err != nil || reply != nil {
+			return reply, err
+		}
+
+		err = b.userDAO.UpdateActiveStatus(ctx, userID, false)
+		if err != nil {
+			return nil, err
+		}
+		b.setLastMarkup(userID, b.activateKeyboard)
+		replies := []BotReply{{chatID, messagestrings.InactiveUser, b.getLastMarkup(userID)}}
+		match, err := b.matchDAO.FindCurrentMatchForUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if match != nil {
+			otherUser, err := b.findUserByID(ctx, match.SecondID)
+			if err != nil {
+				return nil, err
+			}
+			var replacementUserID *int
+			if match.MeetingTime == nil || match.MeetingTime.Sub(b.clock.Now()).Seconds() > 0 {
+				replacementUserID, err = b.findActiveUserIDWithoutMatch(ctx)
+				text := messagestrings.PartnerRefused
+				if replacementUserID != nil {
+					text += ". Но мы нашли для тебя другую пару"
+				} else {
+					b.setLastMarkup(otherUser.ID, b.remindStopMeetingsKeyboard)
+				}
+				replies = append(replies, BotReply{
+					ChatID: otherUser.ChatID,
+					Text:   messagestrings.PartnerRefused,
+					Markup: b.getLastMarkup(otherUser.ID),
+				})
+			}
+			err = b.matchDAO.BreakMatchForUser(ctx, userID)
+			if err != nil {
+				return nil, err
+			}
+			if replacementUserID != nil {
+				matchReplies, err := b.addMatchAndGetMatchReplies(ctx, otherUser, *replacementUserID)
+				if err != nil {
+					return nil, err
+				}
+				replies = append(replies, matchReplies...)
+			}
+		}
+		return replies, nil
+	case messagestrings.Activate:
+		user, err := b.findUserByID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if user.Active {
+			return []BotReply{{chatID, messagestrings.AlreadyActive, b.getLastMarkup(userID)}}, nil
+		}
+		otherUserID, err := b.findActiveUserIDWithoutMatch(ctx)
+		if err != nil {
+			return nil, err
+		}
+		err = b.userDAO.UpdateActiveStatus(ctx, userID, true)
+		if err != nil {
+			return nil, err
+		}
+		b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
+		replies := []BotReply{{chatID, messagestrings.NowActive, b.getLastMarkup(userID)}}
+		if otherUserID != nil {
+			matchReplies, err := b.addMatchAndGetMatchReplies(ctx, user, *otherUserID)
+			if err != nil {
+				return nil, err
+			}
+			replies = append(replies, matchReplies...)
+		}
+		return replies, nil
 	default:
 		switch {
 		case b.state[userID].waitingForCity:
 			b.state[userID].waitingForCity = false
-			err := b.userDAO.UpsertUser(ctx, userID, username, text, chatID, true)
+			city := text
+			err := b.userDAO.UpsertUser(ctx, userID, username, city, chatID, true)
 			if err != nil {
 				return nil, err
 			}
 			return []BotReply{{chatID, messagestrings.Welcome, b.getLastMarkup(userID)}}, nil
 		case b.state[userID].waitingForDate:
 			b.state[userID].waitingForDate = false
+			replies, err := b.replyInactiveUser(ctx, userID, chatID)
+			if err != nil || replies != nil {
+				return replies, err
+			}
 			match, reply, err := b.getMatchOrNoMeetingsReply(ctx, userID, chatID)
 			if err != nil || reply != nil {
 				return reply, err
@@ -202,8 +336,8 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 					return nil, err
 				}
 
-				thisMessage := formatMatchMessage(thisUser, otherUser, meetingTime)
-				otherMessage := formatMatchMessage(otherUser, thisUser, meetingTime)
+				thisMessage := formatMatchMessageWithTime(thisUser, otherUser, meetingTime)
+				otherMessage := formatMatchMessageWithTime(otherUser, thisUser, meetingTime)
 
 				err = b.reminderDAO.AddReminder(ctx, meetingTime, thisUser.ChatID, thisMessage)
 				if err != nil {
@@ -247,16 +381,20 @@ func (b *CoffeeBot) makeMatchesForList(ctx context.Context, reminderTime time.Ti
 		}
 		b.setLastMarkup(users[i].ID, b.remindStopMeetingsKeyboard)
 		b.setLastMarkup(users[i+1].ID, b.remindStopMeetingsKeyboard)
-		err = b.reminderDAO.AddReminder(ctx, reminderTime, users[i].ChatID, fmt.Sprintf(messagestrings.ThisWeekMeetingTemplate, users[i+1].Username))
+		err = b.reminderDAO.AddReminder(ctx, reminderTime, users[i].ChatID, formatMeetingMessage(users[i+1].Username))
 		if err != nil {
 			return err
 		}
-		err = b.reminderDAO.AddReminder(ctx, reminderTime, users[i+1].ChatID, fmt.Sprintf(messagestrings.ThisWeekMeetingTemplate, users[i].Username))
+		err = b.reminderDAO.AddReminder(ctx, reminderTime, users[i+1].ChatID, formatMeetingMessage(users[i].Username))
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func formatMeetingMessage(username string) string {
+	return fmt.Sprintf(messagestrings.ThisWeekMeetingTemplate, username)
 }
 
 func (b *CoffeeBot) MakeMatches(ctx context.Context, reminderTime time.Time) error {

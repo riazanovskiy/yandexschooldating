@@ -33,6 +33,7 @@ type DAO interface {
 	UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool) error
 	FindUserByID(ctx context.Context, ID int) (*User, error)
 	FindActiveUsers(ctx context.Context) ([]User, error)
+	UpdateActiveStatus(ctx context.Context, ID int, active bool) error
 }
 
 type dao struct {
@@ -92,4 +93,15 @@ func (m *dao) UpsertUser(ctx context.Context, ID int, username, city string, cha
 	}
 	_, err := m.users.UpdateOne(ctx, bson.M{UserBSON.ID: ID}, bson.M{"$set": user}, options.Update().SetUpsert(true))
 	return err
+}
+
+func (m *dao) UpdateActiveStatus(ctx context.Context, ID int, active bool) error {
+	result, err := m.users.UpdateOne(ctx, bson.M{UserBSON.ID: ID}, bson.M{"$set": bson.M{UserBSON.Active: active}})
+	if err != nil {
+		return errorx.Decorate(err, "error updating active status for user %d", ID)
+	}
+	if result.MatchedCount == 0 {
+		return errorx.IllegalArgument.New("error updating active status: user %d not found", ID)
+	}
+	return nil
 }

@@ -15,6 +15,10 @@ const (
 	CouldNotParseTime       string = "Не получилось распарсить время"
 	ThisWeekMeetingTemplate string = "На этой неделе у тебя встреча с @%s"
 	TimeInThePast           string = "Это время уже прошло!"
+	PartnerRefused          string = "К сожалению, твой партнёр отказался от встречи"
+	InactiveUser            string = "Ты не участвуешь в Random Coffee. Чтобы вернуться, напиши \"" + Activate + "\""
+	AlreadyActive           string = "Ты уже участвуешь в Random Coffee"
+	NowActive               string = Welcome
 
 	// do not modify city names. they are stored in the db
 

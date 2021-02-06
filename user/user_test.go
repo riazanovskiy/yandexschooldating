@@ -41,6 +41,21 @@ func TestDao(t *testing.T) {
 	require.Equal(t, 1, active[0].ID)
 	require.Equal(t, "durov", active[0].Username)
 
+	err = dao.UpdateActiveStatus(ctx, 2, true)
+	require.Nil(t, err)
+	active, err = dao.FindActiveUsers(ctx)
+	require.Nil(t, err)
+	require.Len(t, active, 2)
+
+	err = dao.UpdateActiveStatus(ctx, 1, false)
+	require.Nil(t, err)
+	active, err = dao.FindActiveUsers(ctx)
+	require.Nil(t, err)
+	require.Len(t, active, 1)
+
+	err = dao.UpdateActiveStatus(ctx, 88, true)
+	require.NotNil(t, err)
+
 	err = client.Disconnect(ctx)
 	if err != nil {
 		panic(err)
@@ -49,5 +64,8 @@ func TestDao(t *testing.T) {
 	_, err = dao.FindUserByID(ctx, 2)
 	require.NotNil(t, err)
 	_, err = dao.FindActiveUsers(ctx)
+	require.NotNil(t, err)
+
+	err = dao.UpdateActiveStatus(ctx, 1, false)
 	require.NotNil(t, err)
 }

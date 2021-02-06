@@ -33,6 +33,16 @@ type fakeMatchDAO struct {
 	matchingCycle int
 }
 
+func (f *fakeMatchDAO) BreakMatchForUser(context.Context, int) error {
+	panic("implement me")
+}
+
+func (f *fakeMatchDAO) GetAllMatchedUsers(context.Context) ([]int, error) {
+	panic("implement me")
+}
+
+var _ match.DAO = (*fakeMatchDAO)(nil)
+
 func (f *fakeMatchDAO) FindCurrentMatchForUserID(context.Context, int) (*match.Match, error) {
 	panic("implement me")
 }
@@ -140,6 +150,9 @@ func TestCoffeeBot(t *testing.T) {
 		replies, err = test.bot.ProcessMessage(ctx, 66, "", 66, "Привет!")
 		require.Nil(t, err)
 		requireSingleReplyText(t, replies, 66, messagestrings.SorryNoUsername)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
+		require.NotNil(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Привет!")
 		require.Nil(t, err)
@@ -487,6 +500,9 @@ func TestCoffeeBot(t *testing.T) {
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Москва")
 		require.NotNil(t, err)
 
+		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.Activate)
+		require.NotNil(t, err)
+
 		test = newTestContext(ctx)
 		test.database = "test_coffeebot"
 		test.init(ctx, &fakeClock)
@@ -613,5 +629,285 @@ func TestCoffeeBot(t *testing.T) {
 	})
 
 	t.Run("Stop meetings", func(t *testing.T) {
+		fakeClock := clock.Fake{Current: time.Date(2020, 7, 5, 5, 59, 56, 0, time.UTC)}
+		test := newTestContext(ctx)
+		defer test.init(ctx, &fakeClock)()
+
+		replies, err := test.bot.ProcessMessage(ctx, 1, "vikki", 1, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		fakeMatches := fakeMatchDAO{0, 0}
+		test.bot = coffeebot.NewCoffeeBot(
+			test.userDAO,
+			&fakeMatches,
+			test.reminderDAO,
+			&fakeClock,
+			&test.removeMarkup,
+			&test.citiesKeyboard,
+			&test.remindStopMeetingsKeyboard,
+			&test.remindChangeTimeStopMeetingsKeyboard,
+			&test.activateKeyboard,
+		)
+		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
+		require.Nil(t, err)
+		require.Equal(t, 0, fakeMatches.addMatchCalls)
+	})
+
+	t.Run("Stop meetings with match", func(t *testing.T) {
+		fakeClock := clock.Fake{Current: time.Date(2020, 7, 5, 5, 59, 56, 0, time.UTC)}
+		test := newTestContext(ctx)
+		defer test.init(ctx, &fakeClock)()
+
+		replies, err := test.bot.ProcessMessage(ctx, 1, "vikki", 1, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.Welcome)
+
+		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
+		require.Nil(t, err)
+		start := time.Now()
+		_ = <-test.queue
+		_ = <-test.queue
+		elapsed := time.Now().Sub(start).Seconds()
+		fakeClock.Current = fakeClock.Current.Add(1 * time.Second)
+		require.True(t, util.IsChannelEmpty(test.queue))
+		require.LessOrEqual(t, elapsed, 2.0)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, "У тебя встреча с @vikki. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		require.Len(t, replies, 2)
+		if replies[0].ChatID == 2 {
+			replies[1], replies[0] = replies[0], replies[1]
+		}
+		require.Equal(t, int64(1), replies[0].ChatID)
+		require.Equal(t, messagestrings.InactiveUser, replies[0].Text)
+		require.Equal(t, int64(2), replies[1].ChatID)
+		require.Equal(t, messagestrings.PartnerRefused, replies[1].Text)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "05.07 9:00")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.NoMeetingsThisWeek)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+	})
+
+	t.Run("Stop meetings with replacement", func(t *testing.T) {
+		fakeClock := clock.Fake{Current: time.Date(2020, 7, 5, 5, 59, 56, 0, time.UTC)}
+		test := newTestContext(ctx)
+		defer test.init(ctx, &fakeClock)()
+
+		replies, err := test.bot.ProcessMessage(ctx, 1, "vikki", 1, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, "Лондон")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.Welcome)
+
+		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
+		require.Nil(t, err)
+		start := time.Now()
+		_ = <-test.queue
+		_ = <-test.queue
+		_ = <-test.queue
+		elapsed := time.Now().Sub(start).Seconds()
+		fakeClock.Current = fakeClock.Current.Add(1 * time.Second)
+		require.True(t, util.IsChannelEmpty(test.queue))
+		require.LessOrEqual(t, elapsed, 2.0)
+
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.NoMeetingsThisWeek)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		require.Len(t, replies, 4)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, "лапки")
+		require.Nil(t, err)
+		require.Len(t, replies, 1)
+		require.Equal(t, &test.activateKeyboard, replies[0].Markup)
+
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, "У тебя встреча с @vance. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, "aaaaa")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.CouldNotParseTime)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, "У тебя встреча с @nancy. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+	})
+
+	t.Run("Activate", func(t *testing.T) {
+		fakeClock := clock.Fake{Current: time.Date(2020, 7, 5, 4, 20, 0, 0, time.UTC)}
+		test := newTestContext(ctx)
+		defer test.init(ctx, &fakeClock)()
+
+		replies, err := test.bot.ProcessMessage(ctx, 1, "vikki", 1, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "Минск")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.NowActive)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.AlreadyActive)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "vikki", 1, messagestrings.Activate)
+		require.Nil(t, err)
+		require.Len(t, replies, 3)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, "У тебя встреча с @vikki. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "05.07 7:30")
+		require.Nil(t, err)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		require.Len(t, replies, 2)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)
+		require.Nil(t, err)
+
+		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
+		require.Nil(t, err)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, "У тебя встреча с @vikki. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, "05.07 5:00")
+		require.Nil(t, err)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)
+		require.Nil(t, err)
+		require.Len(t, replies, 3)
+
+		// Yes, we assume that new users won't get a match until next Monday
+		// Potentially this can be changed
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, "Лондон")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 3, "nancy", 3, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 3, messagestrings.NoMeetingsThisWeek)
+
+		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
+		require.Nil(t, err)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.RemindMe)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, "У тебя встреча с @vikki. Чтобы получить сообщение перед встречей, напиши время встречи в формате число.месяц часы:минуты, например 02.01 15:04")
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.Nil(t, err)
+		require.Len(t, replies, 4)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.NowActive)
 	})
 }
