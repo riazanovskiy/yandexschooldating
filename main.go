@@ -141,7 +141,7 @@ func main() {
 				log.Printf("sending %s %+v", message.Text, message)
 			}
 		case <-matchTimerChan:
-			err = coffeeBot.MakeMatches(ctx, time.Now().Add(12*time.Hour))
+			err = coffeeBot.MakeMatches(ctx, time.Now().Add(9*time.Hour))
 			if err != nil {
 				log.Panic("can't make matches")
 			}
