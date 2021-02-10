@@ -213,7 +213,6 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 		if err != nil || reply != nil {
 			return reply, err
 		}
-
 		err = b.userDAO.UpdateActiveStatus(ctx, userID, false)
 		if err != nil {
 			return nil, err
@@ -292,6 +291,7 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 			if err != nil {
 				return nil, err
 			}
+			b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
 			return []BotReply{{chatID, messagestrings.Welcome, b.getLastMarkup(userID)}}, nil
 		case b.state[userID].waitingForDate:
 			b.state[userID].waitingForDate = false
