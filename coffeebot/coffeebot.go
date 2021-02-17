@@ -153,8 +153,8 @@ func (b *CoffeeBot) addMatchAndGetMatchReplies(ctx context.Context, firstUser *u
 	if err != nil {
 		return nil, err
 	}
-	b.setLastMarkup(firstUser.ID, b.remindChangeTimeStopMeetingsKeyboard)
-	b.setLastMarkup(secondUser.ID, b.remindChangeTimeStopMeetingsKeyboard)
+	b.setLastMarkup(firstUser.ID, b.remindStopMeetingsKeyboard)
+	b.setLastMarkup(secondUser.ID, b.remindStopMeetingsKeyboard)
 	return []BotReply{
 		{firstUser.ChatID, formatMeetingMessage(secondUser.Username), b.getLastMarkup(firstUser.ID)},
 		{secondUser.ChatID, formatMeetingMessage(firstUser.Username), b.getLastMarkup(secondUser.ID)},
