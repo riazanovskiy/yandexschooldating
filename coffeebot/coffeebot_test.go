@@ -41,8 +41,6 @@ func (f *fakeMatchDAO) GetAllMatchedUsers(context.Context) ([]int, error) {
 	panic("implement me")
 }
 
-var _ match.DAO = (*fakeMatchDAO)(nil)
-
 func (f *fakeMatchDAO) FindCurrentMatchForUserID(context.Context, int) (*match.Match, error) {
 	panic("implement me")
 }
@@ -53,10 +51,6 @@ func (f *fakeMatchDAO) AddMatch(context.Context, int, int) error {
 }
 
 func (f *fakeMatchDAO) UpdateMatchTime(context.Context, int, time.Time) error {
-	panic("implement me")
-}
-
-func (f *fakeMatchDAO) InitializeMatchingCycle(context.Context) error {
 	panic("implement me")
 }
 
@@ -76,11 +70,11 @@ func randSeq() string {
 type testContext struct {
 	database    string
 	client      *mongo.Client
-	userDAO     user.DAO
+	userDAO     *user.DAO
 	clock       clock.Clock
-	matchDAO    match.DAO
+	matchDAO    coffeebot.MatchDAO
 	queue       chan reminder.Reminder
-	reminderDAO reminder.DAO
+	reminderDAO *reminder.DAO
 	bot         *coffeebot.CoffeeBot
 
 	removeMarkup                         int
@@ -111,7 +105,7 @@ func (m *testContext) init(ctx context.Context, clock clock.Clock) func() {
 
 	m.clock = clock
 	m.matchDAO = match.NewDAO(m.client, m.database, m.clock)
-	err := m.matchDAO.InitializeMatchingCycle(ctx)
+	err := m.matchDAO.(*match.DAO).InitializeMatchingCycle(ctx)
 	if err != nil {
 		panic(err)
 	}

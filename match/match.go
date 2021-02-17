@@ -38,30 +38,18 @@ var MatchBSON = struct {
 	"matchingCycle",
 }
 
-type DAO interface {
-	FindCurrentMatchForUserID(ctx context.Context, userID int) (*Match, error)
-	AddMatch(ctx context.Context, firstID, secondID int) error
-	UpdateMatchTime(ctx context.Context, ID int, time time.Time) error
-	InitializeMatchingCycle(ctx context.Context) error
-	IncrementMatchingCycle()
-	BreakMatchForUser(ctx context.Context, userID int) error
-	GetAllMatchedUsers(ctx context.Context) ([]int, error)
-}
-
-type dao struct {
+type DAO struct {
 	matches       *mongo.Collection
 	clock         clock.Clock
 	matchingCycle int
 }
 
-var _ DAO = (*dao)(nil)
-
-func NewDAO(client *mongo.Client, database string, clock clock.Clock) DAO {
-	return &dao{matches: client.Database(database).Collection("matches"), clock: clock, matchingCycle: 0}
+func NewDAO(client *mongo.Client, database string, clock clock.Clock) *DAO {
+	return &DAO{matches: client.Database(database).Collection("matches"), clock: clock, matchingCycle: 0}
 }
 
 // InitializeMatchingCycle It is most likely a mistake to use MatchDAO without a call to InitializeMatchingCycle
-func (m *dao) InitializeMatchingCycle(ctx context.Context) error {
+func (m *DAO) InitializeMatchingCycle(ctx context.Context) error {
 	cursor, err := m.matches.Find(ctx, bson.M{}, options.Find().SetLimit(1).SetSort(bson.M{MatchBSON.MatchingCycle: -1}))
 	if err != nil {
 		return errorx.Decorate(err, "error initializing matching cycle")
@@ -77,18 +65,18 @@ func (m *dao) InitializeMatchingCycle(ctx context.Context) error {
 	return nil
 }
 
-func (m *dao) IncrementMatchingCycle() {
+func (m *DAO) IncrementMatchingCycle() {
 	m.matchingCycle++
 }
 
-func (m *dao) filterBson(userID int) bson.M {
+func (m *DAO) filterBson(userID int) bson.M {
 	return bson.M{"$or": []bson.M{
 		{MatchBSON.FirstID: userID, MatchBSON.MatchingCycle: m.matchingCycle, MatchBSON.Refused: false},
 		{MatchBSON.SecondID: userID, MatchBSON.MatchingCycle: m.matchingCycle, MatchBSON.Refused: false},
 	}}
 }
 
-func (m *dao) UpdateMatchTime(ctx context.Context, userID int, meetingTime time.Time) error {
+func (m *DAO) UpdateMatchTime(ctx context.Context, userID int, meetingTime time.Time) error {
 	result, err := m.matches.UpdateOne(ctx, m.filterBson(userID), bson.M{"$set": bson.M{MatchBSON.MeetingTime: meetingTime}})
 	if err != nil {
 		return errorx.Decorate(err, "error updating meeting time")
@@ -100,7 +88,7 @@ func (m *dao) UpdateMatchTime(ctx context.Context, userID int, meetingTime time.
 }
 
 // FindCurrentMatchForUserID always returns a match with its FirstID set to the userUD
-func (m *dao) FindCurrentMatchForUserID(ctx context.Context, userID int) (*Match, error) {
+func (m *DAO) FindCurrentMatchForUserID(ctx context.Context, userID int) (*Match, error) {
 	result := m.matches.FindOne(ctx, m.filterBson(userID))
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil, nil
@@ -122,7 +110,7 @@ func (m *dao) FindCurrentMatchForUserID(ctx context.Context, userID int) (*Match
 	return &match, nil
 }
 
-func (m *dao) checkExistingMatch(ctx context.Context, userID int) error {
+func (m *DAO) checkExistingMatch(ctx context.Context, userID int) error {
 	oldMatch, err := m.FindCurrentMatchForUserID(ctx, userID)
 	if err != nil {
 		return errorx.Decorate(err, "can't check for existing matches for user %d", userID)
@@ -133,7 +121,7 @@ func (m *dao) checkExistingMatch(ctx context.Context, userID int) error {
 	return nil
 }
 
-func (m *dao) AddMatch(ctx context.Context, firstID, secondID int) error {
+func (m *DAO) AddMatch(ctx context.Context, firstID, secondID int) error {
 	err := m.checkExistingMatch(ctx, firstID)
 	if err != nil {
 		return err
@@ -153,7 +141,7 @@ func (m *dao) AddMatch(ctx context.Context, firstID, secondID int) error {
 	return err
 }
 
-func (m *dao) BreakMatchForUser(ctx context.Context, userID int) error {
+func (m *DAO) BreakMatchForUser(ctx context.Context, userID int) error {
 	result, err := m.matches.UpdateOne(ctx, m.filterBson(userID), bson.M{"$set": bson.M{MatchBSON.Refused: true}})
 	if err != nil {
 		return err
@@ -165,7 +153,7 @@ func (m *dao) BreakMatchForUser(ctx context.Context, userID int) error {
 	return nil
 }
 
-func (m *dao) GetAllMatchedUsers(ctx context.Context) ([]int, error) {
+func (m *DAO) GetAllMatchedUsers(ctx context.Context) ([]int, error) {
 	cursor, err := m.matches.Find(ctx, bson.M{MatchBSON.MatchingCycle: m.matchingCycle, MatchBSON.Refused: false})
 	if err != nil {
 		return nil, errorx.Decorate(err, "error finding all matched users")

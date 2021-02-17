@@ -25,28 +25,21 @@ var ReminderBSON = struct {
 	Text     string
 }{"unixTime", "chatId", "text"}
 
-type DAO interface {
-	AddReminder(ctx context.Context, reminderTime time.Time, chatID int64, text string) error
-	PopulateReminderQueue(ctx context.Context) error
-}
-
-type dao struct {
+type DAO struct {
 	reminders *mongo.Collection
 	queue     chan<- Reminder
 	clock     clock.Clock
 }
 
-var _ DAO = (*dao)(nil)
-
-func NewDAO(client *mongo.Client, database string, queue chan<- Reminder, clock clock.Clock) DAO {
-	return &dao{
+func NewDAO(client *mongo.Client, database string, queue chan<- Reminder, clock clock.Clock) *DAO {
+	return &DAO{
 		reminders: client.Database(database).Collection("reminders"),
 		queue:     queue,
 		clock:     clock,
 	}
 }
 
-func (m *dao) AddReminder(ctx context.Context, reminderTime time.Time, chatID int64, text string) error {
+func (m *DAO) AddReminder(ctx context.Context, reminderTime time.Time, chatID int64, text string) error {
 	reminder := Reminder{
 		UnixTime: reminderTime.Unix(),
 		ChatID:   chatID,
@@ -66,7 +59,7 @@ func (m *dao) AddReminder(ctx context.Context, reminderTime time.Time, chatID in
 	return err
 }
 
-func (m *dao) PopulateReminderQueue(ctx context.Context) error {
+func (m *DAO) PopulateReminderQueue(ctx context.Context) error {
 	currentTime := m.clock.Now().Unix()
 	cursor, err := m.reminders.Find(ctx, bson.M{ReminderBSON.UnixTime: bson.M{"$gt": currentTime}})
 	if err != nil {

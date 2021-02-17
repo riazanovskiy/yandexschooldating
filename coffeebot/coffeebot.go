@@ -24,10 +24,19 @@ type userState struct {
 	lastMarkup     interface{}
 }
 
+type MatchDAO interface {
+	FindCurrentMatchForUserID(ctx context.Context, userID int) (*match.Match, error)
+	AddMatch(ctx context.Context, firstID, secondID int) error
+	UpdateMatchTime(ctx context.Context, ID int, time time.Time) error
+	IncrementMatchingCycle()
+	BreakMatchForUser(ctx context.Context, userID int) error
+	GetAllMatchedUsers(ctx context.Context) ([]int, error)
+}
+
 type CoffeeBot struct {
-	userDAO     user.DAO
-	matchDAO    match.DAO
-	reminderDAO reminder.DAO
+	userDAO     *user.DAO
+	matchDAO    MatchDAO
+	reminderDAO *reminder.DAO
 
 	clock clock.Clock
 
@@ -47,9 +56,9 @@ type BotReply struct {
 }
 
 func NewCoffeeBot(
-	userDAO user.DAO,
-	matchDAO match.DAO,
-	reminderDAO reminder.DAO,
+	userDAO *user.DAO,
+	matchDAO MatchDAO,
+	reminderDAO *reminder.DAO,
 	clock clock.Clock,
 	removeMarkup interface{},
 	citiesKeyboard interface{},

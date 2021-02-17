@@ -29,24 +29,15 @@ var UserBSON = struct {
 	RemoteFirst string
 }{"_id", "username", "city", "chatId", "active", "remoteFirst"}
 
-type DAO interface {
-	UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool) error
-	FindUserByID(ctx context.Context, ID int) (*User, error)
-	FindActiveUsers(ctx context.Context) ([]User, error)
-	UpdateActiveStatus(ctx context.Context, ID int, active bool) error
-}
-
-type dao struct {
+type DAO struct {
 	users *mongo.Collection
 }
 
-var _ DAO = (*dao)(nil)
-
-func NewDAO(client *mongo.Client, database string) DAO {
-	return &dao{users: client.Database(database).Collection("users")}
+func NewDAO(client *mongo.Client, database string) *DAO {
+	return &DAO{users: client.Database(database).Collection("users")}
 }
 
-func (m *dao) FindActiveUsers(ctx context.Context) ([]User, error) {
+func (m *DAO) FindActiveUsers(ctx context.Context) ([]User, error) {
 	cursor, err := m.users.Find(ctx, bson.M{UserBSON.Active: true})
 	if err != nil {
 		return nil, errorx.Decorate(err, "error finding active users")
@@ -63,7 +54,7 @@ func (m *dao) FindActiveUsers(ctx context.Context) ([]User, error) {
 	return result, nil
 }
 
-func (m *dao) FindUserByID(ctx context.Context, ID int) (*User, error) {
+func (m *DAO) FindUserByID(ctx context.Context, ID int) (*User, error) {
 	result := m.users.FindOne(ctx, bson.M{UserBSON.ID: ID})
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil, nil
@@ -82,7 +73,7 @@ func (m *dao) FindUserByID(ctx context.Context, ID int) (*User, error) {
 	return &user, nil
 }
 
-func (m *dao) UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool) error {
+func (m *DAO) UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool) error {
 	user := User{
 		ID:          ID,
 		Username:    username,
@@ -95,7 +86,7 @@ func (m *dao) UpsertUser(ctx context.Context, ID int, username, city string, cha
 	return err
 }
 
-func (m *dao) UpdateActiveStatus(ctx context.Context, ID int, active bool) error {
+func (m *DAO) UpdateActiveStatus(ctx context.Context, ID int, active bool) error {
 	result, err := m.users.UpdateOne(ctx, bson.M{UserBSON.ID: ID}, bson.M{"$set": bson.M{UserBSON.Active: active}})
 	if err != nil {
 		return errorx.Decorate(err, "error updating active status for user %d", ID)
