@@ -45,15 +45,11 @@ func (m *DAO) AddReminder(ctx context.Context, reminderTime time.Time, chatID in
 		ChatID:   chatID,
 		Text:     text,
 	}
-	currentTime := m.clock.Now().Unix()
-	if currentTime > reminder.UnixTime {
+	seconds := reminder.UnixTime - m.clock.Now().Unix()
+	if seconds < 0 {
 		return errorx.IllegalState.New("reminders must be in the future")
 	}
-	timer := time.NewTimer(time.Duration(reminder.UnixTime-currentTime) * time.Second)
-	go func() {
-		<-timer.C
-		m.queue <- reminder
-	}()
+	m.startTimer(reminder, seconds)
 	log.Printf("saving reminder %+v", reminder)
 	_, err := m.reminders.InsertOne(ctx, reminder)
 	return err
@@ -75,14 +71,14 @@ func (m *DAO) PopulateReminderQueue(ctx context.Context) error {
 		}
 		seconds := reminder.UnixTime - currentTime
 		if seconds <= 0 {
-			return errorx.IllegalState.New("requested timer duration < 0")
+			log.Printf("requested timer duration < 0, reminder %+v is lost", reminder)
+			continue
 		}
-		duration := time.Duration(seconds) * time.Second
-		timer := time.NewTimer(duration)
-		go func() {
-			<-timer.C
-			m.queue <- reminder
-		}()
+		m.startTimer(reminder, seconds)
 	}
 	return nil
+}
+
+func (m *DAO) startTimer(reminder Reminder, seconds int64) {
+	time.AfterFunc(time.Duration(seconds)*time.Second, func() { m.queue <- reminder })
 }

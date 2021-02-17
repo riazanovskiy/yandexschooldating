@@ -146,10 +146,7 @@ func main() {
 			if err != nil {
 				log.Panic("can't make matches")
 			}
-			go func() {
-				<-time.NewTimer(7 * 24 * time.Hour).C
-				matchTimerChan <- struct{}{}
-			}()
+			time.AfterFunc(7*24*time.Hour, func() { matchTimerChan <- struct{}{} })
 		case reminder := <-remindersChan:
 			message := tgbotapi.NewMessage(reminder.ChatID, reminder.Text)
 			err = sendWithRetry(bot, message)
@@ -185,11 +182,7 @@ func ChooseNextMatchTimerDate(clock clock.Clock) time.Time {
 
 func InitMatchTimerChan(clock clock.Clock) chan struct{} {
 	date := ChooseNextMatchTimerDate(clock)
-	duration := date.Sub(clock.Now())
 	channel := make(chan struct{})
-	go func() {
-		<-(time.NewTimer(duration).C)
-		channel <- struct{}{}
-	}()
+	time.AfterFunc(date.Sub(clock.Now()), func() { channel <- struct{}{} })
 	return channel
 }
