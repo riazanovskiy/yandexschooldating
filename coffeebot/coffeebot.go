@@ -248,7 +248,7 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 				}
 				replies = append(replies, BotReply{
 					ChatID: otherUser.ChatID,
-					Text:   messagestrings.PartnerRefused,
+					Text:   text,
 					Markup: b.getLastMarkup(otherUser.ID),
 				})
 			}
