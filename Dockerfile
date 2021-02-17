@@ -10,7 +10,8 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 
 FROM gcr.io/distroless/static-debian10 as yandexdating
 COPY --from=build-env /server /
-CMD ["/server", "/run/secrets/bot_token"]
+ENTRYPOINT ["/server"]
+CMD ["/run/secrets/bot_token"]
 
 FROM build-env-base AS build-env-debug
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -gcflags="all=-N -l" -o /server
