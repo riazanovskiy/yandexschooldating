@@ -126,7 +126,8 @@ func main() {
 			log.Printf("[%s] [%d] [%d] %s %+v", update.Message.From.UserName, update.Message.From.ID, update.Message.Date, update.Message.Text, strings.Replace(spew.Sdump(update), "\n", " ", -1))
 			replies, err := coffeeBot.ProcessMessage(ctx, update.Message.From.ID, update.Message.From.UserName, update.Message.Chat.ID, update.Message.Text)
 			if err != nil {
-				log.Panicf("can't get reply %+v", err)
+				log.Printf("can't get reply %+v", err)
+				replies = []coffeebot.BotReply{{update.Message.Chat.ID, "Произошла ужасная ошибка, напиши @" + config.AdminUser, nil}}
 			}
 			for i, reply := range replies {
 				message := tgbotapi.NewMessage(reply.ChatID, reply.Text)
