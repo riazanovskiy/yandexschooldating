@@ -228,22 +228,28 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 		}
 		b.setLastMarkup(userID, b.activateKeyboard)
 		replies := []BotReply{{chatID, messagestrings.InactiveUser, b.getLastMarkup(userID)}}
+		log.Printf("extra logging for stop meetings: user %s (id=%d) decided to stop", username, userID)
 		match, err := b.matchDAO.FindCurrentMatchForUserID(ctx, userID)
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("extra logging for stop meetings: match for that user %+v", match)
 		if match != nil {
+			log.Printf("extra logging for stop meetings: that is not nil")
 			otherUser, err := b.findUserByID(ctx, match.SecondID)
 			if err != nil {
 				return nil, err
 			}
 			var replacementUserID *int
 			if match.MeetingTime == nil || match.MeetingTime.Sub(b.clock.Now()).Seconds() > 0 {
+				log.Printf("extra logging for stop meetings: trying to find replacement")
 				replacementUserID, err = b.findActiveUserIDWithoutMatch(ctx)
 				text := messagestrings.PartnerRefused
 				if replacementUserID != nil {
+					log.Printf("extra logging for stop meetings: replacement found %d", *replacementUserID)
 					text += ". Но мы нашли для тебя другую пару"
 				} else {
+					log.Printf("extra logging for stop meetings: replacement not found")
 					b.setLastMarkup(otherUser.ID, b.remindStopMeetingsKeyboard)
 				}
 				replies = append(replies, BotReply{
@@ -251,12 +257,15 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 					Text:   text,
 					Markup: b.getLastMarkup(otherUser.ID),
 				})
+			} else {
+				log.Printf("extra logging for stop meetings: not trying to find replacement")
 			}
 			err = b.matchDAO.BreakMatchForUser(ctx, userID)
 			if err != nil {
 				return nil, err
 			}
 			if replacementUserID != nil {
+				log.Printf("extra logging for stop meetings: creating replacement match")
 				matchReplies, err := b.addMatchAndGetMatchReplies(ctx, otherUser, *replacementUserID)
 				if err != nil {
 					return nil, err
@@ -277,18 +286,23 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("extra logging for activate: otherUserID %+v", otherUserID)
 		err = b.userDAO.UpdateActiveStatus(ctx, userID, true)
 		if err != nil {
 			return nil, err
 		}
+		log.Printf("extra logging for activate: user %d set to active", userID)
 		b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
 		replies := []BotReply{{chatID, messagestrings.NowActive, b.getLastMarkup(userID)}}
 		if otherUserID != nil {
+			log.Printf("extra logging for activate: other user ID is not nil but %d", *otherUserID)
 			matchReplies, err := b.addMatchAndGetMatchReplies(ctx, user, *otherUserID)
 			if err != nil {
 				return nil, err
 			}
 			replies = append(replies, matchReplies...)
+		} else {
+			log.Printf("extra logging for activate: other user ID is nil")
 		}
 		return replies, nil
 	default:
