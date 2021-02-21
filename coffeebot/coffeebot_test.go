@@ -34,15 +34,15 @@ type fakeMatchDAO struct {
 }
 
 func (f *fakeMatchDAO) BreakMatchForUser(context.Context, int) error {
-	panic("implement me")
+	panic("unimplemented")
 }
 
 func (f *fakeMatchDAO) GetAllMatchedUsers(context.Context) ([]int, error) {
-	panic("implement me")
+	panic("unimplemented")
 }
 
 func (f *fakeMatchDAO) FindCurrentMatchForUserID(context.Context, int) (*match.Match, error) {
-	panic("implement me")
+	panic("unimplemented")
 }
 
 func (f *fakeMatchDAO) AddMatch(context.Context, int, int) error {
@@ -51,7 +51,7 @@ func (f *fakeMatchDAO) AddMatch(context.Context, int, int) error {
 }
 
 func (f *fakeMatchDAO) UpdateMatchTime(context.Context, int, time.Time) error {
-	panic("implement me")
+	panic("unimplemented")
 }
 
 func (f *fakeMatchDAO) IncrementMatchingCycle() {
