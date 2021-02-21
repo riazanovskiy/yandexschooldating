@@ -904,4 +904,63 @@ func TestCoffeeBot(t *testing.T) {
 		require.Nil(t, err)
 		requireSingleReplyText(t, replies, 2, messagestrings.NowActive)
 	})
+
+	t.Run("Remote-first matches", func(t *testing.T) {
+		// this test can fail spuriously
+		// I am truly sorry
+		fakeClock := clock.Fake{Current: time.Date(2020, 7, 5, 4, 20, 0, 0, time.UTC)}
+		test := newTestContext(ctx)
+		defer test.init(ctx, &fakeClock)()
+
+		replies, err := test.bot.ProcessMessage(ctx, 1, "john", 1, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.GreetingAskCity)
+
+		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Москва")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 1, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "Москва")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 2, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 5, "tema", 5, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 5, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 5, "tema", 5, "Лондон")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 5, messagestrings.Welcome)
+
+		replies, err = test.bot.ProcessMessage(ctx, 6, "anya", 6, "/start")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 6, messagestrings.GreetingAskCity)
+		replies, err = test.bot.ProcessMessage(ctx, 6, "anya", 6, "Лондон")
+		require.Nil(t, err)
+		requireSingleReplyText(t, replies, 6, messagestrings.Welcome)
+
+		updateResult, err := test.client.Database(test.database).Collection("users").UpdateMany(ctx, bson.M{}, bson.M{"$set": bson.M{user.UserBSON.RemoteFirst: true}})
+		require.Nil(t, err)
+		require.Equal(t, int64(4), updateResult.ModifiedCount)
+
+		ok := false
+		for i := 0; i < 10; i++ {
+			err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(3*time.Second))
+			require.Nil(t, err)
+			fakeClock.Current = fakeClock.Current.Add(10 * time.Second)
+
+			m, err := test.matchDAO.FindCurrentMatchForUserID(ctx, 1)
+			require.Nil(t, err)
+			require.NotNil(t, m)
+
+			if m.SecondID != 2 {
+				ok = true
+				break
+			}
+		}
+
+		require.True(t, ok)
+	})
 }
