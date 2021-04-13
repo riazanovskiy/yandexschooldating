@@ -23,7 +23,7 @@ const (
 	AdminUser = "riazanovskiy"
 )
 
-var MongoUri string = "mongodb://mongo:27017"
+var MongoUri = "mongodb://mongo:27017"
 
 func loadLocationOrPanic(name string) *time.Location {
 	location, err := time.LoadLocation(name)
