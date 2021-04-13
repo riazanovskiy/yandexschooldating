@@ -164,7 +164,7 @@ func main() {
 func sendWithRetry(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) error {
 	var err error
 	for i := 0; i < config.SendMessageRetries; i++ {
-		_, err := bot.Send(message)
+		_, err = bot.Send(message)
 		if err == nil {
 			return nil
 		}
