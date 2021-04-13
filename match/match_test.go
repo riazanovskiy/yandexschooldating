@@ -230,7 +230,7 @@ func TestDao(t *testing.T) {
 	err = dao.BreakMatchForUser(ctx, 85)
 	require.Error(t, err)
 
-	everyone, err = dao.GetAllMatchedUsers(ctx)
+	_, err = dao.GetAllMatchedUsers(ctx)
 	require.Error(t, err)
 
 	dao = match.NewDAO(client, testDatabase, clock)

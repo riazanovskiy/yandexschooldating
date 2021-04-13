@@ -42,6 +42,9 @@ func main() {
 	u.Timeout = 60
 
 	updates, err := bot.GetUpdatesChan(u)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	ctx := context.Background()
 	client, err := util.GetMongoClient(ctx, config.MongoUri, config.MongoTimeout)
@@ -127,7 +130,7 @@ func main() {
 			replies, err := coffeeBot.ProcessMessage(ctx, update.Message.From.ID, update.Message.From.UserName, update.Message.Chat.ID, update.Message.Text)
 			if err != nil {
 				log.Printf("can't get reply %+v", err)
-				replies = []coffeebot.BotReply{{update.Message.Chat.ID, "Произошла ужасная ошибка, напиши @" + config.AdminUser, nil}}
+				replies = []coffeebot.BotReply{{ChatID: update.Message.Chat.ID, Text: "Произошла ужасная ошибка, напиши @" + config.AdminUser, Markup: nil}}
 			}
 			for i, reply := range replies {
 				message := tgbotapi.NewMessage(reply.ChatID, reply.Text)

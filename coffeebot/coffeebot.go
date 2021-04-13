@@ -244,6 +244,9 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 			if match.MeetingTime == nil || match.MeetingTime.Sub(b.clock.Now()).Seconds() > 0 {
 				log.Printf("extra logging for stop meetings: trying to find replacement")
 				replacementUserID, err = b.findActiveUserIDWithoutMatch(ctx)
+				if err != nil {
+					return nil, err
+				}
 				text := messagestrings.PartnerRefused
 				if replacementUserID != nil {
 					log.Printf("extra logging for stop meetings: replacement found %d", *replacementUserID)

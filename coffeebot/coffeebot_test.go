@@ -145,7 +145,7 @@ func TestCoffeeBot(t *testing.T) {
 		require.NoError(t, err)
 		requireSingleReplyText(t, replies, 66, messagestrings.SorryNoUsername)
 
-		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
+		_, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
 		require.Error(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Привет!")
@@ -173,7 +173,7 @@ func TestCoffeeBot(t *testing.T) {
 
 		start := time.Now()
 		tick := <-test.queue
-		elapsed := time.Now().Sub(start).Seconds()
+		elapsed := time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(10 * time.Second)
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, 2.0, elapsed)
@@ -256,7 +256,7 @@ func TestCoffeeBot(t *testing.T) {
 			reminders = append(reminders, <-test.queue)
 		}
 
-		elapsed = time.Now().Sub(start).Seconds()
+		elapsed = time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(10 * time.Second)
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, 2.0, elapsed)
@@ -308,7 +308,7 @@ func TestCoffeeBot(t *testing.T) {
 			reminders = append(reminders, <-test.queue)
 		}
 
-		elapsed = time.Now().Sub(start).Seconds()
+		elapsed = time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(5 * time.Second)
 		require.LessOrEqual(t, 3.0, elapsed)
 		require.LessOrEqual(t, elapsed, 7.0)
@@ -349,7 +349,7 @@ func TestCoffeeBot(t *testing.T) {
 			require.Equal(t, "Встречи в твоём городе не нашлось. Встреча с @msch будет 05 July в 06:00 UTC", replies[1].Text)
 		}
 
-		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
+		_, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.RemindMe)
 		require.NoError(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "04.07 6:00")
@@ -379,9 +379,9 @@ func TestCoffeeBot(t *testing.T) {
 		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
 		require.NoError(t, err)
 		start := time.Now()
-		_ = <-test.queue
-		_ = <-test.queue
-		elapsed := time.Now().Sub(start).Seconds()
+		<-test.queue
+		<-test.queue
+		elapsed := time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(1 * time.Second)
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, elapsed, 2.0)
@@ -410,7 +410,7 @@ func TestCoffeeBot(t *testing.T) {
 
 		tick1 := <-test.queue
 		tick2 := <-test.queue
-		elapsed = time.Now().Sub(start).Seconds()
+		elapsed = time.Since(start).Seconds()
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, 2.0, elapsed)
 		require.LessOrEqual(t, elapsed, 4.0)
@@ -439,9 +439,9 @@ func TestCoffeeBot(t *testing.T) {
 		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
 		require.NoError(t, err)
 		start := time.Now()
-		_ = <-test.queue
-		_ = <-test.queue
-		elapsed := time.Now().Sub(start).Seconds()
+		<-test.queue
+		<-test.queue
+		elapsed := time.Since(start).Seconds()
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, elapsed, 2.0)
 
@@ -491,10 +491,10 @@ func TestCoffeeBot(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Москва")
+		_, err = test.bot.ProcessMessage(ctx, 1, "john", 1, "Москва")
 		require.Error(t, err)
 
-		replies, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.Activate)
+		_, err = test.bot.ProcessMessage(ctx, 1, "john", 1, messagestrings.Activate)
 		require.Error(t, err)
 
 		test = newTestContext(ctx)
@@ -528,7 +528,7 @@ func TestCoffeeBot(t *testing.T) {
 			panic(err)
 		}
 
-		replies, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "05.07 9:15")
+		_, err = test.bot.ProcessMessage(ctx, 2, "jack", 2, "05.07 9:15")
 		require.Error(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 2128506, config.AdminUser, 2128506, "MakeMatches")
@@ -700,9 +700,9 @@ func TestCoffeeBot(t *testing.T) {
 		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
 		require.NoError(t, err)
 		start := time.Now()
-		_ = <-test.queue
-		_ = <-test.queue
-		elapsed := time.Now().Sub(start).Seconds()
+		<-test.queue
+		<-test.queue
+		elapsed := time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(1 * time.Second)
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, elapsed, 2.0)
@@ -760,10 +760,10 @@ func TestCoffeeBot(t *testing.T) {
 		err = test.bot.MakeMatches(ctx, fakeClock.Now().Add(1*time.Second))
 		require.NoError(t, err)
 		start := time.Now()
-		_ = <-test.queue
-		_ = <-test.queue
-		_ = <-test.queue
-		elapsed := time.Now().Sub(start).Seconds()
+		<-test.queue
+		<-test.queue
+		<-test.queue
+		elapsed := time.Since(start).Seconds()
 		fakeClock.Current = fakeClock.Current.Add(1 * time.Second)
 		require.True(t, util.IsChannelEmpty(test.queue))
 		require.LessOrEqual(t, elapsed, 2.0)
@@ -870,6 +870,7 @@ func TestCoffeeBot(t *testing.T) {
 		require.NoError(t, err)
 
 		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.StopMeetings)
+		require.NoError(t, err)
 		requireSingleReplyText(t, replies, 2, messagestrings.InactiveUser)
 
 		replies, err = test.bot.ProcessMessage(ctx, 2, "vance", 2, messagestrings.Activate)

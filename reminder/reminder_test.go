@@ -34,7 +34,7 @@ func TestDao_AddReminder(t *testing.T) {
 	require.NoError(t, err)
 
 	value, ok := <-queue
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	require.True(t, ok)
 	require.Equal(t, int64(42), value.ChatID)
 	require.Equal(t, "bring a towel", value.Text)
@@ -83,7 +83,7 @@ func TestDao_PopulateReminderQueue(t *testing.T) {
 	require.NoError(t, dao.PopulateReminderQueue(ctx))
 
 	value, ok := <-newQueue
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	require.True(t, ok)
 	require.Equal(t, int64(42), value.ChatID)
 	require.Equal(t, "bring a towel", value.Text)

@@ -39,8 +39,8 @@ func TestInitMatchTimerChan(t *testing.T) {
 	result := main.InitMatchTimerChan(&clock)
 
 	start := time.Now()
-	_ = <-result
-	elapsed := time.Now().Sub(start).Seconds()
+	<-result
+	elapsed := time.Since(start).Seconds()
 	require.LessOrEqual(t, 3.0, elapsed)
 	require.LessOrEqual(t, elapsed, 5.0)
 }
