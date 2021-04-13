@@ -168,6 +168,7 @@ func sendWithRetry(bot *tgbotapi.BotAPI, message tgbotapi.MessageConfig) error {
 		if err == nil {
 			return nil
 		}
+		log.Printf("error sending message: %+v, sleeping and retrying", err)
 		time.Sleep(config.SendMessageRetryTimeoutMs * time.Millisecond)
 	}
 
