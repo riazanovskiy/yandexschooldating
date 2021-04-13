@@ -58,7 +58,7 @@ func (m *DAO) InitializeMatchingCycle(ctx context.Context) error {
 		var document Match
 		err = cursor.Decode(&document)
 		if err != nil {
-			return err
+			return errorx.Decorate(err, "can't decode match")
 		}
 		m.matchingCycle = document.MatchingCycle
 	}
@@ -144,7 +144,7 @@ func (m *DAO) AddMatch(ctx context.Context, firstID, secondID int) error {
 func (m *DAO) BreakMatchForUser(ctx context.Context, userID int) error {
 	result, err := m.matches.UpdateOne(ctx, m.filterBson(userID), bson.M{"$set": bson.M{MatchBSON.Refused: true}})
 	if err != nil {
-		return err
+		return errorx.Decorate(err, "error breaking match")
 	}
 
 	if result.MatchedCount == 0 {
