@@ -15,7 +15,7 @@ import (
 func TestGetMongoClient(t *testing.T) {
 	ctx := context.Background()
 	_, err := util.GetMongoClient(ctx, config.MongoUri, 2*time.Second)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = util.GetMongoClient(ctx, "https://mongo:27017", 2*time.Second)
 	require.Error(t, err)

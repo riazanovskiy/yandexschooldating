@@ -31,7 +31,7 @@ func TestDao_AddReminder(t *testing.T) {
 
 	reminderTime := start.Add(time.Second * 4)
 	err = dao.AddReminder(ctx, reminderTime, 42, "bring a towel")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	value, ok := <-queue
 	elapsed := time.Now().Sub(start)
@@ -74,13 +74,13 @@ func TestDao_PopulateReminderQueue(t *testing.T) {
 
 	reminderTime := start.Add(time.Second * 4)
 	err = dao.AddReminder(ctx, reminderTime, 42, "bring a towel")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	newQueue := make(chan reminder.Reminder)
 	require.True(t, util.IsChannelEmpty(newQueue))
 	clock.Current = start.Add(2 * time.Second)
 	dao = reminder.NewDAO(client, testDatabase, newQueue, clock)
-	require.Nil(t, dao.PopulateReminderQueue(ctx))
+	require.NoError(t, dao.PopulateReminderQueue(ctx))
 
 	value, ok := <-newQueue
 	elapsed := time.Now().Sub(start)
@@ -96,7 +96,7 @@ func TestDao_PopulateReminderQueue(t *testing.T) {
 	require.True(t, util.IsChannelEmpty(newQueue))
 	clock.Current = start.Add(5 * time.Second)
 	dao = reminder.NewDAO(client, testDatabase, newQueue, clock)
-	require.Nil(t, dao.PopulateReminderQueue(ctx))
+	require.NoError(t, dao.PopulateReminderQueue(ctx))
 	require.True(t, util.IsChannelEmpty(newQueue))
 
 	err = client.Disconnect(ctx)
