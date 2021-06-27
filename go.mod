@@ -8,5 +8,5 @@ require (
 	github.com/joomcode/errorx v1.0.3
 	github.com/stretchr/testify v1.7.0
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
-	go.mongodb.org/mongo-driver v1.5.1
+	go.mongodb.org/mongo-driver v1.5.3
 )
