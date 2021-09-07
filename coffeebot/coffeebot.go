@@ -170,6 +170,8 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 		return []BotReply{{chatID, messagestrings.SorryNoUsername, b.removeMarkup}}, nil
 	}
 
+	// TODO: update username
+
 	switch text {
 	case "/start":
 		b.state[userID].waitingForCity = true
