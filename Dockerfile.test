@@ -1,4 +1,4 @@
-FROM golang:1.16 AS yandexdating-test
+FROM golang:1.17 AS yandexdating-test
 WORKDIR /dockerdev
 COPY go.mod go.sum ./
 RUN go mod download
