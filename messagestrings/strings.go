@@ -29,4 +29,11 @@ const (
 	Yekaterinburg  = "Екатеринбург"
 	NizhnyNovgorod = "Нижний Новгород"
 	London         = "Лондон"
+	TelAviv        = "Тель-Авив"
+	Yerevan        = "Ереван"
+	Tbilisi        = "Тбилиси"
+	NewYork        = "Нью-Йорк"
+	Berlin         = "Берлин"
+	Zurich         = "Цюрих"
+	Istanbul       = "Стамбул"
 )

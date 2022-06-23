@@ -41,4 +41,11 @@ var CitiesLocation = map[string]*time.Location{
 	messagestrings.Yekaterinburg:  loadLocationOrPanic("Asia/Yekaterinburg"),
 	messagestrings.NizhnyNovgorod: loadLocationOrPanic("Europe/Moscow"),
 	messagestrings.London:         loadLocationOrPanic("Europe/London"),
+	messagestrings.TelAviv:        loadLocationOrPanic("Asia/Tel_Aviv"),
+	messagestrings.Yerevan:        loadLocationOrPanic("Asia/Yerevan"),
+	messagestrings.Tbilisi:        loadLocationOrPanic("Asia/Tbilisi"),
+	messagestrings.NewYork:        loadLocationOrPanic("America/New_York"),
+	messagestrings.Berlin:         loadLocationOrPanic("Europe/Berlin"),
+	messagestrings.Zurich:         loadLocationOrPanic("Europe/Zurich"),
+	messagestrings.Istanbul:       loadLocationOrPanic("Asia/Istanbul"),
 }
