@@ -21,6 +21,44 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
+var DomesticKeyboard = tgbotapi.NewReplyKeyboard(
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.Moscow),
+		tgbotapi.NewKeyboardButton(messagestrings.StPetersburg),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.Minsk),
+		tgbotapi.NewKeyboardButton(messagestrings.Novosibirsk),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.Yekaterinburg),
+		tgbotapi.NewKeyboardButton(messagestrings.NizhnyNovgorod),
+	),
+)
+
+var WorldKeyboard = tgbotapi.NewReplyKeyboard(
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.Moscow),
+		tgbotapi.NewKeyboardButton(messagestrings.Minsk),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.TelAviv),
+		tgbotapi.NewKeyboardButton(messagestrings.Yerevan),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.NewYork),
+		tgbotapi.NewKeyboardButton(messagestrings.Tbilisi),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.London),
+		tgbotapi.NewKeyboardButton(messagestrings.Berlin),
+	),
+	tgbotapi.NewKeyboardButtonRow(
+		tgbotapi.NewKeyboardButton(messagestrings.Zurich),
+		tgbotapi.NewKeyboardButton(messagestrings.Istanbul),
+	),
+)
+
 func main() {
 	spew.Config.Indent = ""
 
@@ -71,20 +109,8 @@ func main() {
 	}
 
 	removeMarkup := tgbotapi.NewRemoveKeyboard(true)
-	citiesKeyboard := tgbotapi.NewReplyKeyboard(
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton(messagestrings.Moscow),
-			tgbotapi.NewKeyboardButton(messagestrings.StPetersburg),
-		),
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton(messagestrings.Minsk),
-			tgbotapi.NewKeyboardButton(messagestrings.Novosibirsk),
-		),
-		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton(messagestrings.Yekaterinburg),
-			tgbotapi.NewKeyboardButton(messagestrings.NizhnyNovgorod),
-		),
-	)
+
+	citiesKeyboard := WorldKeyboard
 
 	remindStopMeetingsKeyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
