@@ -9,5 +9,5 @@ Dockerfile
 Dockerfile.test
 Makefile
 README.md
-token.txt
+*token.txt
 *.iml
