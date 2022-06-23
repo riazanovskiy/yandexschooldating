@@ -137,6 +137,9 @@ func TestCoffeeBot(t *testing.T) {
 		test := newTestContext(ctx)
 		defer test.init(ctx, &fakeClock)()
 
+		err := test.bot.MakeMatches(ctx, fakeClock.Now().Add(3*time.Second))
+		require.NoError(t, err)
+
 		replies, err := test.bot.ProcessMessage(ctx, 555, "", 555, "/start")
 		require.NoError(t, err)
 		requireSingleReplyText(t, replies, 555, messagestrings.SorryNoUsername)
