@@ -20,10 +20,10 @@ func TestDao(t *testing.T) {
 	}
 	dao := user.NewDAO(client, "test")
 
-	err = dao.UpsertUser(ctx, 1, "durov", "Dubai", 1, true)
+	err = dao.UpsertUser(ctx, 1, "durov", "Dubai", 1, true, true)
 	require.NoError(t, err)
 
-	err = dao.UpsertUser(ctx, 2, "nikolai", "Dubai", 2, false)
+	err = dao.UpsertUser(ctx, 2, "nikolai", "Dubai", 2, false, false)
 	require.NoError(t, err)
 
 	nonExisting, err := dao.FindUserByID(ctx, 5)

@@ -20,7 +20,9 @@ import (
 
 type userState struct {
 	waitingForCity bool
+	waitingForRemoteFirst bool
 	waitingForDate bool
+	city string
 	lastMarkup     interface{}
 }
 
@@ -42,6 +44,7 @@ type CoffeeBot struct {
 
 	removeMarkup                         interface{}
 	citiesKeyboard                       interface{}
+	remoteFirstKeyboard                  interface{}
 	remindStopMeetingsKeyboard           interface{}
 	remindChangeTimeStopMeetingsKeyboard interface{}
 	activateKeyboard                     interface{}
@@ -62,6 +65,7 @@ func NewCoffeeBot(
 	clock clock.Clock,
 	removeMarkup interface{},
 	citiesKeyboard interface{},
+	remoteFirstKeyboard interface{},
 	remindStopMeetingsKeyboard interface{},
 	remindChangeTimeStopMeetingsKeyboard interface{},
 	activateKeyboard interface{},
@@ -73,6 +77,7 @@ func NewCoffeeBot(
 		clock:                                clock,
 		removeMarkup:                         removeMarkup,
 		citiesKeyboard:                       citiesKeyboard,
+		remoteFirstKeyboard:                  remoteFirstKeyboard,
 		remindStopMeetingsKeyboard:           remindStopMeetingsKeyboard,
 		remindChangeTimeStopMeetingsKeyboard: remindChangeTimeStopMeetingsKeyboard,
 		activateKeyboard:                     activateKeyboard,
@@ -175,6 +180,7 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 	switch text {
 	case "/start":
 		b.state[userID].waitingForCity = true
+
 		return []BotReply{{chatID, messagestrings.GreetingAskCity, b.citiesKeyboard}}, nil
 	case messagestrings.RemindMe:
 		replies, err := b.replyInactiveUser(ctx, userID, chatID)
@@ -313,14 +319,27 @@ func (b *CoffeeBot) ProcessMessage(ctx context.Context, userID int, username str
 	default:
 		switch {
 		case b.state[userID].waitingForCity:
-			b.state[userID].waitingForCity = false
-			city := text
-			err := b.userDAO.UpsertUser(ctx, userID, username, city, chatID, true)
+			state := b.state[userID]
+			state.waitingForCity = false
+			state.waitingForRemoteFirst = true
+			state.city = text
+			b.setLastMarkup(userID, b.remoteFirstKeyboard)
+			return []BotReply{{chatID, messagestrings.AskRemoteFirst, b.getLastMarkup(userID)}}, nil
+
+		case b.state[userID].waitingForRemoteFirst:
+			state := b.state[userID]
+			state.waitingForRemoteFirst = false
+			remoteFirst := false
+			if text == messagestrings.RemoteFirst {
+				remoteFirst = true
+			}
+			err := b.userDAO.UpsertUser(ctx, userID, username, state.city, chatID, true, remoteFirst)
 			if err != nil {
 				return nil, err
 			}
 			b.setLastMarkup(userID, b.remindStopMeetingsKeyboard)
 			return []BotReply{{chatID, messagestrings.Welcome, b.getLastMarkup(userID)}}, nil
+
 		case b.state[userID].waitingForDate:
 			b.state[userID].waitingForDate = false
 			replies, err := b.replyInactiveUser(ctx, userID, chatID)

@@ -73,14 +73,14 @@ func (m *DAO) FindUserByID(ctx context.Context, ID int) (*User, error) {
 	return &user, nil
 }
 
-func (m *DAO) UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool) error {
+func (m *DAO) UpsertUser(ctx context.Context, ID int, username, city string, chatID int64, active bool, remoteFirst bool) error {
 	user := User{
 		ID:          ID,
 		Username:    username,
 		City:        city,
 		ChatID:      chatID,
 		Active:      active,
-		RemoteFirst: false,
+		RemoteFirst: remoteFirst,
 	}
 	_, err := m.users.UpdateOne(ctx, bson.M{UserBSON.ID: ID}, bson.M{"$set": user}, options.Update().SetUpsert(true))
 	return err
