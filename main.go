@@ -111,6 +111,12 @@ func main() {
 	removeMarkup := tgbotapi.NewRemoveKeyboard(true)
 
 	citiesKeyboard := WorldKeyboard
+	remoteFirstKeyboard := tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton(messagestrings.RemoteFirst),
+			tgbotapi.NewKeyboardButton(messagestrings.Local),
+		),
+	)
 
 	remindStopMeetingsKeyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
@@ -140,6 +146,7 @@ func main() {
 		realClock,
 		removeMarkup,
 		citiesKeyboard,
+		remoteFirstKeyboard,
 		remindStopMeetingsKeyboard,
 		remindChangeTimeStopMeetingsKeyboard,
 		activateKeyboard,
